@@ -2,7 +2,8 @@ import { ImageResponse } from "next/og";
 import { ownerSchema, repoSchema } from "@/lib/parse-input";
 import { fetchRepo } from "@/lib/github/client";
 import { fetchCustomSocialPreviewUrl } from "@/lib/github/graphql";
-import { links } from "@/lib/constants/links";
+import { loadInterSubset } from "@/lib/og/fonts";
+import { BrandOgCard, RepoOgCard, ogCardText } from "./og-card";
 
 const CACHE_CONTROL = "public, max-age=86400, s-maxage=86400";
 
@@ -12,78 +13,21 @@ export async function GET(req: Request) {
   const repo = url.searchParams.get("repo") ?? "";
 
   if (!ownerSchema.safeParse(owner).success || !repoSchema.safeParse(repo).success) {
-    return fallbackImage("githubdl");
+    return renderCard(<BrandOgCard />, ogCardText());
   }
 
   const [r, socialPreview] = await Promise.all([
     fetchRepo(owner, repo),
     fetchCustomSocialPreviewUrl(owner, repo),
   ]);
-  if (!r.ok) return fallbackImage(`${owner}/${repo}`);
+  if (!r.ok) return renderCard(<BrandOgCard />, ogCardText(), { cacheable: false });
 
   if (socialPreview.ok && socialPreview.data) {
     const banner = await proxyImage(socialPreview.data);
     if (banner) return banner;
   }
 
-  return new ImageResponse(
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        padding: "80px",
-        background: "white",
-        fontFamily: "sans-serif",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={r.data.owner.avatar_url}
-          alt=""
-          width={96}
-          height={96}
-          style={{ borderRadius: 96 }}
-        />
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 64, fontWeight: 600, color: "#0a0a0a" }}>{r.data.name}</div>
-          <div style={{ fontSize: 28, color: "#666" }}>{`by ${r.data.owner.login}`}</div>
-        </div>
-      </div>
-      {r.data.description ? (
-        <div
-          style={{
-            marginTop: 32,
-            fontSize: 28,
-            color: "#444",
-            lineClamp: 2,
-            display: "block",
-          }}
-        >
-          {r.data.description.slice(0, 300)}
-        </div>
-      ) : null}
-      <div
-        style={{
-          marginTop: "auto",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div style={{ fontSize: 28, fontWeight: 600, color: "#2563eb" }}>{links.app.hostname}</div>
-        <div style={{ fontSize: 22, color: "#666" }}>Get the program.</div>
-      </div>
-    </div>,
-    {
-      width: 1200,
-      height: 630,
-      headers: { "Cache-Control": CACHE_CONTROL },
-    },
-  );
+  return renderCard(<RepoOgCard repo={r.data} />, ogCardText(r.data));
 }
 
 async function proxyImage(url: string): Promise<Response | null> {
@@ -99,22 +43,11 @@ async function proxyImage(url: string): Promise<Response | null> {
   }
 }
 
-function fallbackImage(text: string) {
-  return new ImageResponse(
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 72,
-        color: "#0a0a0a",
-        background: "white",
-      }}
-    >
-      {text}
-    </div>,
-    { width: 1200, height: 630 },
-  );
+async function renderCard(card: React.ReactElement, text: string, { cacheable = true } = {}) {
+  return new ImageResponse(card, {
+    width: 1200,
+    height: 630,
+    fonts: await loadInterSubset(text),
+    headers: cacheable ? { "Cache-Control": CACHE_CONTROL } : {},
+  });
 }
