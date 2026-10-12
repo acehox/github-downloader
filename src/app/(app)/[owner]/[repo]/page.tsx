@@ -16,6 +16,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/ui/button";
 import React from "react";
 import { BetaToggle } from "@/components/beta-toggle";
+import { ogImageUrl } from "@/lib/og/url";
 import { links } from "@/lib/constants/links";
 
 const MAX_PAGE = 20;
@@ -72,7 +73,7 @@ export async function generateMetadata({
       description: desc,
       url: canonical,
       // No width/height: custom repo banners come in arbitrary sizes.
-      images: [{ url: `/og?owner=${owner}&repo=${repo}` }],
+      images: [{ url: ogImageUrl(owner, repo) }],
     },
   };
 }

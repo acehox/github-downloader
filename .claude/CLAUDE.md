@@ -91,6 +91,7 @@ src/
     classify-asset.ts                filename → OS + architecture (operates on StoredAsset)
     detect-os.ts                     User-Agent → OS (ua-parser-js)
     format.ts                        bytes / date helpers
+    og/url.ts                        ogImageUrl + OG_IMAGE_VERSION (bump on card design change to bust Discord/browser image caches)
     og/fonts.ts                      loadInterSubset — Inter 400/600/800 subset to card text via Google Fonts `text=`
     github/
       schemas.ts                     Zod schemas for GitHub REST responses
