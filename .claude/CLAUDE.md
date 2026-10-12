@@ -71,7 +71,7 @@ src/
     (app)/[owner]/[repo]/page.tsx    releases list, paginated, ?beta=show toggle
     (app)/[owner]/[repo]/v/[version]/ version deep-link page (noindex)
     (app)/about|privacy|terms/page.tsx static legal pages
-    og/route.tsx                     OG image (Node runtime ImageResponse, no version)
+    og/route.tsx                     OG image: custom repo banner proxy, else generated card (Node runtime ImageResponse)
     api/track/download/route.ts      POST endpoint for sendBeacon download_click → Workers AE
     robots.ts                        robots.txt generator
   components/
@@ -93,7 +93,7 @@ src/
     github/
       schemas.ts                     Zod schemas for GitHub REST responses
       client.ts                      ghFetch + fetchRepo + fetchReleasesChunk + fetchReleaseByTagRaw
-      graphql.ts                     ghGraphQL + walkReleaseTags (tag-name walker)
+      graphql.ts                     ghGraphQL + walkReleaseTags (tag-name walker) + fetchCustomSocialPreviewUrl
     store/
       schemas.ts                     StoredAsset / StoredRelease / StoredReleaseSet / StoredTagsIndex (Zod)
       kv.ts                          Cloudflare KV wrapper, UnavailableError, getJSON/setJSON
@@ -160,7 +160,8 @@ OS detection from `User-Agent` header on server. Asset classification from filen
 - Self-canonical to `https://githubdl.com/{owner}/{repo}`
 - Per-page `<title>` and meta description
 - JSON-LD `SoftwareApplication` with `downloadUrl` and `softwareVersion` (only when at least one asset exists)
-- OG image at `/og?owner=…&repo=…` — repo metadata only, no version (cached 24 h via Cloudflare cache rule)
+- OG image at `/og?owner=…&repo=…` — proxies the repo's custom GitHub social preview banner when set (GraphQL `usesCustomOpenGraphImage`), else renders a generated card from repo metadata; no version (cached 24 h via Cloudflare cache rule). No `og:image` width/height since custom banners vary in size
+- `ImageResponse` (satori) throws on any `<div>` with 2+ child nodes and no explicit `display: flex` — JSX like `by {name}` is two nodes; use a template literal
 - `robots.txt` allows root + repo pages, disallows `/api/`, `/og`, `/*?page=`, `/*?beta=`, `/*/v/`
 - `/v/{version}` and pages 2+ are `noindex`
 - No sitemap (infinite URL space)

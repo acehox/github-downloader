@@ -71,13 +71,8 @@ export async function generateMetadata({
       title: `Download ${r.data.name} – ${r.data.owner.login}`,
       description: desc,
       url: canonical,
-      images: [
-        {
-          url: `/og?owner=${owner}&repo=${repo}`,
-          width: 1200,
-          height: 630,
-        },
-      ],
+      // No width/height: custom repo banners come in arbitrary sizes.
+      images: [{ url: `/og?owner=${owner}&repo=${repo}` }],
     },
   };
 }

@@ -107,3 +107,38 @@ export async function walkReleaseTags(
     },
   };
 }
+
+const socialPreviewSchema = z.object({
+  repository: z
+    .object({
+      usesCustomOpenGraphImage: z.boolean(),
+      openGraphImageUrl: z.string(),
+    })
+    .nullable(),
+});
+
+const SOCIAL_PREVIEW_QUERY = `
+query($owner:String!, $name:String!) {
+  repository(owner:$owner, name:$name) {
+    usesCustomOpenGraphImage
+    openGraphImageUrl
+  }
+}`;
+
+/** Resolves to the repo's uploaded social preview banner, or null when it only has GitHub's auto-generated card. */
+export async function fetchCustomSocialPreviewUrl(
+  owner: string,
+  name: string,
+): Promise<GraphQLResult<string | null>> {
+  const result = await ghGraphQL(SOCIAL_PREVIEW_QUERY, { owner, name }, socialPreviewSchema, {
+    revalidate: 21600,
+    tags: [`repo:${owner.toLowerCase()}/${name.toLowerCase()}`],
+  });
+  if (!result.ok) return result;
+  const repository = result.data.repository;
+  if (!repository) return { ok: false, error: { kind: "not_found" } };
+  return {
+    ok: true,
+    data: repository.usesCustomOpenGraphImage ? repository.openGraphImageUrl : null,
+  };
+}

@@ -1,7 +1,10 @@
 import { ImageResponse } from "next/og";
 import { ownerSchema, repoSchema } from "@/lib/parse-input";
 import { fetchRepo } from "@/lib/github/client";
+import { fetchCustomSocialPreviewUrl } from "@/lib/github/graphql";
 import { links } from "@/lib/constants/links";
+
+const CACHE_CONTROL = "public, max-age=86400, s-maxage=86400";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -12,8 +15,16 @@ export async function GET(req: Request) {
     return fallbackImage("githubdl");
   }
 
-  const r = await fetchRepo(owner, repo);
+  const [r, socialPreview] = await Promise.all([
+    fetchRepo(owner, repo),
+    fetchCustomSocialPreviewUrl(owner, repo),
+  ]);
   if (!r.ok) return fallbackImage(`${owner}/${repo}`);
+
+  if (socialPreview.ok && socialPreview.data) {
+    const banner = await proxyImage(socialPreview.data);
+    if (banner) return banner;
+  }
 
   return new ImageResponse(
     <div
@@ -39,7 +50,7 @@ export async function GET(req: Request) {
         />
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 64, fontWeight: 600, color: "#0a0a0a" }}>{r.data.name}</div>
-          <div style={{ fontSize: 28, color: "#666" }}>by {r.data.owner.login}</div>
+          <div style={{ fontSize: 28, color: "#666" }}>{`by ${r.data.owner.login}`}</div>
         </div>
       </div>
       {r.data.description ? (
@@ -52,7 +63,7 @@ export async function GET(req: Request) {
             display: "block",
           }}
         >
-          {r.data.description.slice(0, 160)}
+          {r.data.description.slice(0, 300)}
         </div>
       ) : null}
       <div
@@ -70,9 +81,22 @@ export async function GET(req: Request) {
     {
       width: 1200,
       height: 630,
-      headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400" },
+      headers: { "Cache-Control": CACHE_CONTROL },
     },
   );
+}
+
+async function proxyImage(url: string): Promise<Response | null> {
+  try {
+    const res = await fetch(url);
+    const contentType = res.headers.get("content-type") ?? "";
+    if (!res.ok || !contentType.startsWith("image/")) return null;
+    return new Response(res.body, {
+      headers: { "Content-Type": contentType, "Cache-Control": CACHE_CONTROL },
+    });
+  } catch {
+    return null;
+  }
 }
 
 function fallbackImage(text: string) {
