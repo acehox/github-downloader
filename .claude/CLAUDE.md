@@ -72,6 +72,7 @@ src/
     (app)/[owner]/[repo]/v/[version]/ version deep-link page (noindex)
     (app)/about|privacy|terms/page.tsx static legal pages
     og/route.tsx                     OG image: custom repo banner proxy, else generated card (Node runtime ImageResponse)
+    og/og-card.tsx                   dark-theme RepoOgCard / BrandOgCard (hex copies of globals.css tokens + brand gradient)
     api/track/download/route.ts      POST endpoint for sendBeacon download_click → Workers AE
     robots.ts                        robots.txt generator
   components/
@@ -90,6 +91,7 @@ src/
     classify-asset.ts                filename → OS + architecture (operates on StoredAsset)
     detect-os.ts                     User-Agent → OS (ua-parser-js)
     format.ts                        bytes / date helpers
+    og/fonts.ts                      loadInterSubset — Inter 400/600/800 subset to card text via Google Fonts `text=`
     github/
       schemas.ts                     Zod schemas for GitHub REST responses
       client.ts                      ghFetch + fetchRepo + fetchReleasesChunk + fetchReleaseByTagRaw
@@ -160,8 +162,8 @@ OS detection from `User-Agent` header on server. Asset classification from filen
 - Self-canonical to `https://githubdl.com/{owner}/{repo}`
 - Per-page `<title>` and meta description
 - JSON-LD `SoftwareApplication` with `downloadUrl` and `softwareVersion` (only when at least one asset exists)
-- OG image at `/og?owner=…&repo=…` — proxies the repo's custom GitHub social preview banner when set (GraphQL `usesCustomOpenGraphImage`), else renders a generated card from repo metadata; no version (cached 24 h via Cloudflare cache rule). No `og:image` width/height since custom banners vary in size
-- `ImageResponse` (satori) throws on any `<div>` with 2+ child nodes and no explicit `display: flex` — JSX like `by {name}` is two nodes; use a template literal
+- OG image at `/og?owner=…&repo=…` — proxies the repo's custom GitHub social preview banner when set (GraphQL `usesCustomOpenGraphImage`), else renders a generated dark card matching the site (logo, Inter); invalid/missing repos get a brand-only card (not cached on GitHub errors); no version (cached 24 h via Cloudflare cache rule). No `og:image` width/height since custom banners vary in size
+- `ImageResponse` (satori) throws on any `<div>` with 2+ child nodes and no explicit `display: flex` — JSX like `by {name}` is two nodes; use a template literal. `next/og` bundles only Geist Regular — fonts/weights must be passed in, and satori can't read CSS variables
 - `robots.txt` allows root + repo pages, disallows `/api/`, `/og`, `/*?page=`, `/*?beta=`, `/*/v/`
 - `/v/{version}` and pages 2+ are `noindex`
 - No sitemap (infinite URL space)
